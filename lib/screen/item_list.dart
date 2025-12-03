@@ -21,23 +21,36 @@ class _ItemListScreenState extends State<ItemListScreen> {
   // ====================================================================
   // LOGIKA CREATE (Menambah Data)
   // ====================================================================
-  void _showDialog() {
-    // PENTING: Reset/Bersihkan isi form setiap kali dialog dibuka.
-    // Jika tidak di-clear, tulisan lama akan tetap muncul saat user membuka dialog lagi.
-    _nameController.clear();
-    _pointController.clear();
+  void _showDialog({ Item? item }) {
+    if (item == null) {
+      // PENTING: Reset/Bersihkan isi form setiap kali dialog dibuka.
+      // Jika tidak di-clear, tulisan lama akan tetap muncul saat user membuka dialog lagi.
+      _nameController.clear();
+      _pointController.clear();
+    } else {
+      // Jika item ada, isi form dengan data yang ada
+      _nameController.text = item.name;
+      _pointController.text = item.point.toString();
+    }
 
     showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Add Data'),
+          title: Text(item == null ? 'Add Data' : 'Update Data',
+            style: const TextStyle(
+                color: Colors.black,
+                fontSize: 22,
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w600
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min, // Agar dialog tidak memanjang ke bawah
             children: [
               TextField(
                 controller: _nameController, // Hubungkan TextField dengan controller
                 decoration: InputDecoration(
-                    labelText: 'Item Name'
+                    labelText: 'Item Name',
                 ),
               ),
               TextField(
@@ -52,7 +65,14 @@ class _ItemListScreenState extends State<ItemListScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context), // Tutup dialog
-              child: Text("Cancel"),
+              child: Text("Cancel",
+                style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.w500
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -66,16 +86,81 @@ class _ItemListScreenState extends State<ItemListScreen> {
                 // 3. Validasi sederhana: Nama tidak boleh kosong
                 if (name.isNotEmpty) {
                   // Panggil fungsi CREATE dari Service
-                  _firestoreService.addItem(name, point);
+                  if (item == null) {
+                    _firestoreService.addItem(name, point);
+                  } else {
+                    _firestoreService.updateItem(item.id, name, point);
+                  }
 
                   // Tutup dialog setelah simpan
                   Navigator.pop(context);
                 }
               },
-              child: Text("Save"),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700]
+              ),
+              child: Text( item == null ? "Save" : "Update",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.w500
+                ),),
             )
           ],
         )
+    );
+  }
+
+  void _showDeleteConfirmation(String id, String name) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text ('Delete Item',
+          style: const TextStyle(
+              color: Colors.black,
+              fontSize: 22,
+              fontFamily: 'Montserrat',
+              fontWeight: FontWeight.w600
+          ),
+        ),
+        content: Text('Are you sure to delete `$name`? Data cannot be restored!',
+          style: const TextStyle(
+              color: Colors.black,
+              fontSize: 14,
+              fontFamily: 'Montserrat',
+              fontWeight: FontWeight.w500
+          ),),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel",
+              style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _firestoreService.deleteItem(id);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red
+            ),
+            child: Text('Delete',
+            style: TextStyle(
+                fontSize: 16,
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w500,
+                color: Colors.white)
+            ),
+          )
+        ],
+      )
     );
   }
 
@@ -96,7 +181,13 @@ class _ItemListScreenState extends State<ItemListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text('Item List'),
+          title: Text('Item List',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w600
+            ),),
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
         ),
@@ -123,7 +214,13 @@ class _ItemListScreenState extends State<ItemListScreen> {
             // Kondisi 2: Terjadi Error saat mengambil data
             if (snapshot.hasError) {
               return Center(
-                  child: Text('Error: ${snapshot.error}')
+                  child: Text('Error: ${snapshot.error}',
+                    style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 22,
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w600
+                    ),)
               );
             }
 
@@ -133,7 +230,13 @@ class _ItemListScreenState extends State<ItemListScreen> {
             // Kondisi 3: Data berhasil diambil tapi kosong
             if (items.isEmpty) {
               return Center(
-                  child: Text('No item to be displayed!')
+                  child: Text('No item to be displayed!',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w500
+                    ),)
               );
             }
 
@@ -150,20 +253,34 @@ class _ItemListScreenState extends State<ItemListScreen> {
                     title: Text(
                         item.name,
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        )
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w600
+                        ),
                     ),
                     subtitle: Text(
                         item.id
                     ),
-                    trailing: Text(
-                        '${item.point} ${item.point > 1 ? "Points" : "Point"}',
-                      style: TextStyle(
-                          color: Colors.green[700],
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600
-                      ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                            '${item.point} ${item.point > 1 ? "Points" : "Point"}',
+                            style: TextStyle(
+                            color: Colors.green[700],
+                            fontSize: 16,
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w600
+                            ),
+                        ),
+                        IconButton(
+                            onPressed: () => _showDeleteConfirmation(item.id, item.name),
+                            icon: Icon(Icons.delete_rounded, color: Colors.red)
+                        )
+                      ],
                     ),
+                    onTap: () => _showDialog(item: item),
                   ),
                 );
               },
